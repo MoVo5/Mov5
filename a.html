@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>걸음 수 측정</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding-top: 80px;
+      background: #f5f5f5;
+    }
+
+    #steps {
+      font-size: 70px;
+      font-weight: bold;
+      margin: 30px;
+    }
+
+    button {
+      padding: 15px 30px;
+      font-size: 18px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>오늘의 걸음 수</h1>
+
+  <div id="steps">0</div>
+
+  <p>걸음</p>
+
+  <button onclick="startStepCounter()">걸음 측정 시작</button>
+
+  <script>
+    let steps = 0;
+
+    // 이전 가속도 값
+    let previousAcceleration = 0;
+
+    // 마지막 걸음으로부터 지난 시간
+    let lastStepTime = 0;
+
+    function startStepCounter() {
+
+      // iPhone에서는 센서 권한을 요청해야 하는 경우가 있음
+      if (
+        typeof DeviceMotionEvent !== "undefined" &&
+        typeof DeviceMotionEvent.requestPermission === "function"
+      ) {
+        DeviceMotionEvent.requestPermission()
+          .then(permissionState => {
+
+            if (permissionState === "granted") {
+              window.addEventListener(
+                "devicemotion",
+                detectStep
+              );
+            } else {
+              alert("센서 사용 권한이 필요합니다.");
+            }
+
+          })
+          .catch(console.error);
+
+      } else {
+
+        // Android 등
+        window.addEventListener(
+          "devicemotion",
+          detectStep
+        );
+
+      }
+
+      alert("걸음 측정을 시작합니다!");
+    }
+
+
+    function detectStep(event) {
+
+      const acceleration = event.accelerationIncludingGravity;
+
+      if (!acceleration) return;
+
+      const x = acceleration.x || 0;
+      const y = acceleration.y || 0;
+      const z = acceleration.z || 0;
+
+      // 전체 가속도 계산
+      const magnitude =
+        Math.sqrt(x * x + y * y + z * z);
+
+      // 현재 가속도와 이전 가속도의 차이
+      const difference =
+        Math.abs(magnitude - previousAcceleration);
+
+      const currentTime = Date.now();
+
+      /*
+        일정 수준 이상의 움직임이 발생하고
+        너무 짧은 시간에 연속으로 감지되지 않으면
+        한 걸음으로 판단
+      */
+      if (
+        difference > 1.2 &&
+        currentTime - lastStepTime > 300
+      ) {
+
+        steps++;
+
+        document.getElementById("steps").textContent = steps;
+
+        lastStepTime = currentTime;
+      }
+
+      previousAcceleration = magnitude;
+    }
+
+  </script>
+
+</body>
+</html>
