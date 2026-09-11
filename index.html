@@ -54,10 +54,10 @@
     /* 대시보드 레이아웃 (2열) */
     .dashboard {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(480px, 1fr));
       gap: 25px;
     }
-    @media (max-width: 520px) {
+    @media (max-width: 540px) {
       .dashboard { grid-template-columns: 1fr; }
     }
 
@@ -83,6 +83,7 @@
       border-radius: 8px;
       margin-bottom: 15px;
       cursor: pointer;
+      border: 1px solid #334155;
     }
     .apod-iframe {
       width: 100%;
@@ -97,21 +98,33 @@
       font-size: 0.9rem;
       line-height: 1.6;
       color: #cbd5e1;
-      max-height: 220px;
+      max-height: 200px;
       overflow-y: auto;
       padding-right: 5px;
     }
 
-    /* 소행성 스타일 */
-    .asteroid-list { max-height: 520px; overflow-y: auto; padding-right: 5px; }
+    /* 소행성 스타일 (사진 포함) */
+    .asteroid-list { max-height: 560px; overflow-y: auto; padding-right: 5px; }
     .asteroid-item {
       background-color: #0f172a;
       padding: 14px;
       border-radius: 8px;
-      margin-bottom: 12px;
+      margin-bottom: 14px;
       border-left: 4px solid #38bdf8;
+      display: flex;
+      gap: 15px;
+      align-items: center;
     }
     .asteroid-item.hazard { border-left-color: #ef4444; }
+    .asteroid-img {
+      width: 100px;
+      height: 100px;
+      object-fit: cover;
+      border-radius: 6px;
+      border: 1px solid #334155;
+      flex-shrink: 0;
+    }
+    .asteroid-info { flex-grow: 1; }
     .asteroid-item h4 { margin: 0 0 8px 0; font-size: 0.98rem; color: #f8fafc; }
     .badge-hazard {
       background-color: #ef4444;
@@ -134,7 +147,7 @@
   <div class="container">
     <header>
       <h1>🌌 NASA 우주 대시보드</h1>
-      <p class="subtitle">선택한 날짜의 천체 사진(APOD) 및 접근 소행성(NeoWs) 정보</p>
+      <p class="subtitle">선택한 날짜의 천체 사진(APOD) 및 근접 소행성(NeoWs) 정보</p>
     </header>
 
     <div class="search-box">
@@ -161,7 +174,10 @@
   <script>
     const API_KEY = 'dgilVYms8V6DRsPZrxa0yZzQghwibLwbaAJGubsa';
 
-    // 페이지 진입 시 오늘 날짜로 자동 조회
+    // NASA 소행성 대표 시각 이미지 (위험 / 일반)
+    const HAZARD_ASTEROID_IMG = 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Asteroid_Bennu.jpg/600px-Asteroid_Bennu.jpg';
+    const NORMAL_ASTEROID_IMG = 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/Asteroid_Eros.jpg/600px-Asteroid_Eros.jpg';
+
     window.onload = () => {
       const today = new Date().toISOString().split('T')[0];
       document.getElementById('search-date').value = today;
@@ -178,7 +194,7 @@
       fetchAsteroids(date);
     }
 
-    // [1] APOD 가져오기
+    // [1] APOD 가져오기 (전달받은 JSON 응답 예시 구조 지원)
     async function fetchAPOD(date) {
       const apodDiv = document.getElementById('apod-content');
       apodDiv.className = 'loading';
@@ -191,9 +207,13 @@
         if (!res.ok) throw new Error('사진 데이터를 불러올 수 없습니다.');
         const data = await res.json();
 
+        // 예시 구조의 hdurl, url, alt 파싱
+        const imgUrl = data.hdurl || data.url;
+        const altText = data.alt || data.title || 'NASA APOD Image';
+
         let mediaHtml = '';
-        if (data.media_type === 'image') {
-          mediaHtml = `<img src="${data.url}" alt="${data.title}" class="apod-media" title="클릭시 원본 보기" onclick="window.open('${data.hdurl || data.url}', '_blank')">`;
+        if (data.media_type === 'image' || !data.media_type) {
+          mediaHtml = `<img src="${imgUrl}" alt="${altText}" class="apod-media" title="클릭시 원본 고화질 보기" onclick="window.open('${imgUrl}', '_blank')">`;
         } else if (data.media_type === 'video') {
           mediaHtml = `<iframe src="${data.url}" class="apod-iframe" allowfullscreen></iframe>`;
         }
@@ -202,8 +222,8 @@
         apodDiv.innerHTML = `
           ${mediaHtml}
           <div class="apod-title">${data.title}</div>
-          <div class="apod-date">${data.date} ${data.copyright ? `| © ${data.copyright}` : ''}</div>
-          <div class="apod-explanation">${data.explanation}</div>
+          <div class="apod-date">${data.date || date} ${data.copyright ? `| © ${data.copyright}` : ''}</div>
+          <div class="apod-explanation">${data.explanation || ''}</div>
         `;
       } catch (err) {
         apodDiv.className = 'error';
@@ -211,7 +231,7 @@
       }
     }
 
-    // [2] 소행성 정보 가져오기
+    // [2] 소행성 정보 가져오기 (대표 사진 포함)
     async function fetchAsteroids(date) {
       const asteroidDiv = document.getElementById('asteroid-content');
       asteroidDiv.className = 'loading';
@@ -236,6 +256,7 @@
 
         asteroids.forEach(ast => {
           const isHazard = ast.is_potentially_hazardous_asteroid;
+          const asteroidImg = isHazard ? HAZARD_ASTEROID_IMG : NORMAL_ASTEROID_IMG;
           const maxDiameter = ast.estimated_diameter.meters.estimated_diameter_max.toFixed(1);
           const minDiameter = ast.estimated_diameter.meters.estimated_diameter_min.toFixed(1);
           const approachData = ast.close_approach_data[0];
@@ -244,16 +265,19 @@
 
           html += `
             <div class="asteroid-item ${isHazard ? 'hazard' : ''}">
-              <h4>
-                ${ast.name}
-                ${isHazard ? '<span class="badge-hazard">⚠️ 잠재적 위험</span>' : ''}
-              </h4>
-              <div class="asteroid-details">
-                <div>• <strong>지름 추정치:</strong> ${minDiameter}m ~ ${maxDiameter}m</div>
-                <div>• <strong>상대 속도:</strong> 시속 ${velocity} km</div>
-                <div>• <strong>지구 근접 거리:</strong> ${missDistance} km</div>
+              <img src="${asteroidImg}" alt="소행성 이미지" class="asteroid-img">
+              <div class="asteroid-info">
+                <h4>
+                  ${ast.name}
+                  ${isHazard ? '<span class="badge-hazard">⚠️ 잠재적 위험</span>' : ''}
+                </h4>
+                <div class="asteroid-details">
+                  <div>• <strong>지름 추정치:</strong> ${minDiameter}m ~ ${maxDiameter}m</div>
+                  <div>• <strong>상대 속도:</strong> 시속 ${velocity} km</div>
+                  <div>• <strong>지구 최근접 거리:</strong> ${missDistance} km</div>
+                </div>
+                <a href="${ast.nasa_jpl_url}" target="_blank" class="jpl-link">JPL 연구소 상세 정보 ↗</a>
               </div>
-              <a href="${ast.nasa_jpl_url}" target="_blank" class="jpl-link">JPL 연구소 상세 정보 ↗</a>
             </div>
           `;
         });
