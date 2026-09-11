@@ -3,392 +3,70 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KYRO - 청소년 운동 & 학습 연계 플랫폼</title>
-    <!-- Tailwind CSS (CDN) -->
+    <title>Movo - 청소년 운동 & 학습 연계 플랫폼</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome Icons (CDN) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
     <style>
         body { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif; }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* 3D 코인 회전 및 적립 애니메이션 */
+        @keyframes coinFlip {
+            0% { transform: scale(0.2) rotateY(0deg) translateY(50px); opacity: 0; }
+            50% { transform: scale(1.3) rotateY(720deg) translateY(-20px); opacity: 1; }
+            100% { transform: scale(1) rotateY(1440deg) translateY(0); opacity: 1; }
+        }
+        .animate-coin { animation: coinFlip 1.2s ease-out forwards; }
+        
+        /* 로고 스티커 효과 */
+        .movo-logo-bg {
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+        }
     </style>
 </head>
 <body class="bg-slate-100 min-h-screen flex justify-center items-center p-0 sm:p-4">
 
-    <!-- 모바일 프레임 컨테이너 -->
     <div class="w-full sm:max-w-md bg-white min-h-screen sm:min-h-[844px] sm:rounded-3xl shadow-2xl flex flex-col justify-between overflow-hidden relative">
         
-        <!-- 상단 헤더 -->
-        <header class="bg-indigo-600 text-white p-4 flex justify-between items-center shadow-md">
-            <div class="flex items-center space-x-2">
-                <i class="fa-solid font-bold text-2xl fa-bolt text-yellow-300"></i>
-                <h1 class="text-xl font-black tracking-wider">KYRO</h1>
+        <header class="bg-blue-900 text-white p-3.5 flex justify-between items-center shadow-md z-10">
+            <div class="flex items-center space-x-2.5">
+                <div class="w-9 h-9 movo-logo-bg rounded-xl border border-blue-300/40 flex items-center justify-center relative shadow-inner overflow-hidden">
+                    <i class="fa-solid fa-book-open text-[10px] text-sky-200 absolute top-1 left-1.5 transform -rotate-12"></i>
+                    <i class="fa-solid fa-paw text-[9px] text-sky-300 absolute top-1 right-1.5"></i>
+                    <span class="font-black text-lg tracking-tighter text-white mt-1">M</span>
+                </div>
+                <div class="flex flex-col">
+                    <h1 class="text-lg font-black tracking-wider text-white leading-none">MOVO</h1>
+                    <span class="text-[9px] text-blue-200 tracking-tight font-medium">Movement & Education</span>
+                </div>
             </div>
-            <!-- 포인트 표시 UI -->
-            <div class="bg-indigo-700 bg-opacity-80 px-3 py-1.5 rounded-full flex items-center space-x-2 border border-indigo-400">
-                <i class="fa-solid fa-coins text-yellow-300"></i>
-                <span id="user-points" class="font-bold text-sm">500</span>
-                <span class="text-xs text-indigo-200">P</span>
+            
+            <div class="bg-blue-800/80 px-3 py-1.5 rounded-full flex items-center space-x-1.5 border border-blue-400/30 shadow-sm">
+                <i class="fa-solid fa-coins text-yellow-300 text-sm"></i>
+                <span id="user-points" class="font-black text-sm text-yellow-300">500</span>
+                <span class="text-xs font-bold text-blue-100">P</span>
             </div>
         </header>
 
-        <!-- 메인 콘텐츠 영역 (탭 전환) -->
-        <main class="flex-1 overflow-y-auto p-4 hide-scrollbar">
+        <main class="flex-1 overflow-y-auto p-4 hide-scrollbar relative">
             
-            <!-- 1. 운동 탭 (GPS & 거리 측정) -->
             <section id="tab-exercise" class="space-y-4">
-                <div class="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-5 rounded-2xl shadow-lg">
-                    <span class="text-xs font-semibold uppercase tracking-wider bg-white/20 px-2.5 py-1 rounded-full">KYRO Active Engine</span>
-                    <h2 class="text-xl font-bold mt-2">오늘의 신체활동 인증</h2>
-                    <p class="text-xs opacity-80 mt-1">운동한 만큼 교육 포인트가 적립됩니다!</p>
-                    
-                    <!-- 거리 & 시간 대시보드 -->
-                    <div class="grid grid-cols-2 gap-3 mt-4 bg-white/10 p-3 rounded-xl backdrop-blur-sm">
-                        <div class="text-center border-r border-white/20">
-                            <span class="text-xs text-indigo-100">이동 거리</span>
-                            <div class="text-2xl font-black"><span id="distance">0.00</span> <span class="text-xs font-normal">km</span></div>
+                <div class="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-4 rounded-2xl shadow-lg relative overflow-hidden">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-[10px] bg-white/20 text-blue-100 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">Movo Active Sync</span>
+                            <h2 class="text-xl font-bold mt-1">신체활동 모니터링</h2>
                         </div>
-                        <div class="text-center">
-                            <span class="text-xs text-indigo-100">획득 예상 포인트</span>
-                            <div class="text-2xl font-black text-yellow-300">+<span id="calc-points">0</span> <span class="text-xs font-normal text-white">P</span></div>
+                        <div id="mobile-sync-badge" class="flex items-center gap-1 bg-emerald-500/30 text-emerald-200 text-[11px] px-2 py-1 rounded-lg border border-emerald-400/30">
+                            <i class="fa-solid fa-mobile-screen-button text-xs"></i>
+                            <span id="sync-text">스마트폰 연결됨</span>
                         </div>
                     </div>
-                </div>
 
-                <!-- 위치 및 가상 루트 표시 카드 -->
-                <div class="bg-slate-50 border border-slate-200 p-4 rounded-2xl shadow-sm">
-                    <div class="flex justify-between items-center mb-2">
-                        <h3 class="font-bold text-slate-700 text-sm flex items-center gap-2">
-                            <i class="fa-solid fa-map-location-dot text-indigo-500"></i> 경로 진행률 (KYRO 모델링)
-                        </h3>
-                        <span id="gps-status" class="text-xs px-2 py-0.5 rounded-full bg-slate-200 text-slate-600">대기 중</span>
-                    </div>
-
-                    <!-- 프로그래스 바 (영역 표시) -->
-                    <div class="w-full bg-slate-200 rounded-full h-4 relative overflow-hidden my-3">
-                        <div id="route-progress" class="bg-indigo-600 h-4 rounded-full transition-all duration-300" style="width: 0%"></div>
-                    </div>
-                    <div class="flex justify-between text-xs text-slate-400 font-medium">
-                        <span>출발 (0km)</span>
-                        <span>목표 (2.0km)</span>
-                    </div>
-
-                    <!-- 기능 제어 버튼 -->
-                    <div class="grid grid-cols-2 gap-2 mt-4">
-                        <button onclick="toggleRealGPS()" id="btn-real-gps" class="py-2.5 px-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm">
-                            <i class="fa-solid fa-location-crosshairs"></i> 실제 GPS 측정
-                        </button>
-                        <button onclick="toggleVirtualGPS()" id="btn-virtual-gps" class="py-2.5 px-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm">
-                            <i class="fa-solid fa-gamepad"></i> 가상 루트 실행
-                        </button>
-                    </div>
-                </div>
-
-                <!-- 활동 완료 및 적립 버튼 -->
-                <button onclick="claimExercisePoints()" class="w-full py-3.5 bg-yellow-400 hover:bg-yellow-500 text-slate-900 font-extrabold rounded-2xl shadow-md transition transform active:scale-95 flex justify-center items-center gap-2">
-                    <i class="fa-solid fa-circle-check text-lg"></i> 운동 완료 및 포인트 적립하기
-                </button>
-            </section>
-
-            <!-- 2. 학습 탭 (EBS 콘텐츠 & AI 맞춤 문제) -->
-            <section id="tab-learn" class="space-y-4 hidden">
-                <div class="bg-indigo-50 border border-indigo-100 p-4 rounded-2xl">
-                    <div class="flex justify-between items-center mb-2">
-                        <span class="text-xs bg-indigo-600 text-white font-bold px-2 py-0.5 rounded">EBS 연계</span>
-                        <span class="text-xs text-indigo-600 font-medium"><i class="fa-solid fa-wand-magic-sparkles"></i> AI 맞춤 문제 제공</span>
-                    </div>
-                    <h3 class="font-bold text-slate-800 text-lg">고등 수학(상) - 이차함수의 활용</h3>
-                    <p class="text-xs text-slate-500 mt-0.5">핵심 개념 정리 비디오 강의 (10분)</p>
-                    
-                    <!-- 플레이어 예시 영역 -->
-                    <div class="mt-3 bg-slate-800 rounded-xl overflow-hidden aspect-video relative flex justify-center items-center text-white shadow-inner">
-                        <i class="fa-solid fa-circle-play text-4xl text-indigo-400 hover:scale-110 cursor-pointer transition"></i>
-                        <span class="absolute bottom-2 right-2 text-[10px] bg-black/60 px-1.5 py-0.5 rounded">10:00</span>
-                    </div>
-                </div>
-
-                <!-- AI 맞춤 문제 카드 -->
-                <div class="bg-white border border-slate-200 p-4 rounded-2xl shadow-sm">
-                    <h4 class="font-bold text-slate-800 text-sm mb-2 flex items-center gap-2">
-                        <i class="fa-solid fa-brain text-indigo-500"></i> AI 영상 분석 맞춤 퀴즈
-                    </h4>
-                    <p class="text-xs text-slate-600 bg-slate-50 p-2.5 rounded-lg mb-3">
-                        Q. 이차함수 $y = a(x-h)^2 + k$ 의 꼭짓점 좌표로 올바른 것은?
-                    </p>
-                    <div class="space-y-2">
-                        <button onclick="solveQuiz(false)" class="w-full text-left p-2.5 rounded-xl border border-slate-200 text-xs text-slate-700 hover:bg-indigo-50 hover:border-indigo-300 transition">① (a, k)</button>
-                        <button onclick="solveQuiz(true)" class="w-full text-left p-2.5 rounded-xl border border-slate-200 text-xs text-slate-700 hover:bg-indigo-50 hover:border-indigo-300 transition">② (h, k) [정답]</button>
-                        <button onclick="solveQuiz(false)" class="w-full text-left p-2.5 rounded-xl border border-slate-200 text-xs text-slate-700 hover:bg-indigo-50 hover:border-indigo-300 transition">③ (-h, -k)</button>
-                    </div>
-                </div>
-            </section>
-
-            <!-- 3. 상점 탭 (포인트 교환) -->
-            <section id="tab-shop" class="space-y-4 hidden">
-                <div class="flex justify-between items-center">
-                    <h3 class="font-bold text-slate-800">포인트 교환 교구 및 수강권</h3>
-                    <span class="text-xs text-indigo-600 font-medium">교육 불평등 해소 상점</span>
-                </div>
-
-                <div class="grid grid-cols-1 gap-3">
-                    <!-- 상품 1 -->
-                    <div class="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
-                        <div class="flex items-center space-x-3">
-                            <div class="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center text-indigo-600 text-xl font-bold">
-                                <i class="fa-solid fa-ticket"></i>
-                            </div>
-                            <div>
-                                <h4 class="font-bold text-xs text-slate-800">EBS 프리미엄 1개월 수강권</h4>
-                                <p class="text-[11px] text-slate-400">학습 불평등 완화 지원</p>
-                                <span class="text-xs font-bold text-indigo-600">500 P</span>
-                            </div>
-                        </div>
-                        <button onclick="buyItem('EBS 수강권', 500)" class="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700">교환</button>
-                    </div>
-
-                    <!-- 상품 2 -->
-                    <div class="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
-                        <div class="flex items-center space-x-3">
-                            <div class="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center text-emerald-600 text-xl font-bold">
-                                <i class="fa-solid fa-book"></i>
-                            </div>
-                            <div>
-                                <h4 class="font-bold text-xs text-slate-800">수능 교재 모바일 교환권</h4>
-                                <p class="text-[11px] text-slate-400">온라인 교재 무료 다운로드</p>
-                                <span class="text-xs font-bold text-indigo-600">300 P</span>
-                            </div>
-                        </div>
-                        <button onclick="buyItem('수능 교재 교환권', 300)" class="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700">교환</button>
-                    </div>
-
-                    <!-- 상품 3 -->
-                    <div class="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
-                        <div class="flex items-center space-x-3">
-                            <div class="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center text-orange-600 text-xl font-bold">
-                                <i class="fa-solid fa-shoe-prints"></i>
-                            </div>
-                            <div>
-                                <h4 class="font-bold text-xs text-slate-800">스포츠 브랜드 20% 할인권</h4>
-                                <p class="text-[11px] text-slate-400">제휴 스포츠 브랜드 전용</p>
-                                <span class="text-xs font-bold text-indigo-600">700 P</span>
-                            </div>
-                        </div>
-                        <button onclick="buyItem('스포츠 브랜드 할인권', 700)" class="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700">교환</button>
-                    </div>
-                </div>
-            </section>
-
-            <!-- 4. 커뮤니티 탭 -->
-            <section id="tab-community" class="space-y-4 hidden">
-                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-                    <h3 class="font-bold text-slate-800 text-sm mb-3"><i class="fa-solid fa-users text-indigo-500"></i> 청소년 루틴 공유 피드</h3>
-                    
-                    <div class="space-y-3">
-                        <div class="p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs">
-                            <div class="flex justify-between items-center mb-1">
-                                <span class="font-bold text-slate-700">나현지 (CEO/개발자)</span>
-                                <span class="text-[10px] text-slate-400">10분 전</span>
-                            </div>
-                            <p class="text-slate-600">오늘 2.5km 러닝 달성하고 수학 AI 퀴즈까지 맞췄습니다! 🎯</p>
-                        </div>
-                        <div class="p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs">
-                            <div class="flex justify-between items-center mb-1">
-                                <span class="font-bold text-slate-700">조영우 (데이터분석가)</span>
-                                <span class="text-[10px] text-slate-400">30분 전</span>
-                            </div>
-                            <p class="text-slate-600">시험기간에 홈트 15분 하니까 진짜 집중 잘되네요. 강추!</p>
-                        </div>
-                    </div>
-                </div>
-            </section>
-        </main>
-
-        <!-- 하단 네비게이션 바 (3개 핵심 기능 + 상점) -->
-        <nav class="bg-white border-t border-slate-200 flex justify-around py-3 px-2 text-slate-400 text-xs font-medium">
-            <button onclick="switchTab('exercise')" id="nav-exercise" class="flex flex-col items-center space-y-1 text-indigo-600">
-                <i class="fa-solid fa-person-running text-lg"></i>
-                <span>운동</span>
-            </button>
-            <button onclick="switchTab('learn')" id="nav-learn" class="flex flex-col items-center space-y-1 hover:text-indigo-600">
-                <i class="fa-solid fa-graduation-cap text-lg"></i>
-                <span>학습</span>
-            </button>
-            <button onclick="switchTab('shop')" id="nav-shop" class="flex flex-col items-center space-y-1 hover:text-indigo-600">
-                <i class="fa-solid fa-store text-lg"></i>
-                <span>포인트상점</span>
-            </button>
-            <button onclick="switchTab('community')" id="nav-community" class="flex flex-col items-center space-y-1 hover:text-indigo-600">
-                <i class="fa-solid fa-comments text-lg"></i>
-                <span>커뮤니티</span>
-            </button>
-        </nav>
-    </div>
-
-    <!-- 스크립트 엔진 -->
-    <script>
-        // 전역 상태 변수
-        let userPoints = 500;
-        let totalDistance = 0.0; // km
-        let isRealGPSActive = false;
-        let isVirtualGPSActive = false;
-        let watchId = null;
-        let virtualInterval = null;
-        let lastCoords = null;
-
-        // 탭 전환 핸들러
-        function switchTab(tabName) {
-            const tabs = ['exercise', 'learn', 'shop', 'community'];
-            tabs.forEach(t => {
-                document.getElementById(`tab-${t}`).classList.add('hidden');
-                document.getElementById(`nav-${t}`).classList.remove('text-indigo-600');
-            });
-            document.getElementById(`tab-${tabName}`).classList.remove('hidden');
-            document.getElementById(`nav-${tabName}`).classList.add('text-indigo-600');
-        }
-
-        // 포인트 스코어 업데이트 UI
-        function updatePointsUI() {
-            document.getElementById('user-points').innerText = userPoints;
-        }
-
-        // 1. 실제 GPS 거리 측정 기능 (Geolocation API & Haversine Formula)
-        function toggleRealGPS() {
-            if (isVirtualGPSActive) toggleVirtualGPS(); // 가상 모드 종료
-
-            const statusElem = document.getElementById('gps-status');
-            const btnElem = document.getElementById('btn-real-gps');
-
-            if (!isRealGPSActive) {
-                if ('geolocation' in navigator) {
-                    isRealGPSActive = true;
-                    statusElem.innerText = 'GPS 실시간 측정 중';
-                    statusElem.className = 'text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-bold';
-                    btnElem.classList.replace('bg-indigo-600', 'bg-red-500');
-                    btnElem.innerHTML = `<i class="fa-solid fa-stop"></i> GPS 중지`;
-
-                    watchId = navigator.geolocation.watchPosition(
-                        position => {
-                            const { latitude, longitude } = position.coords;
-                            if (lastCoords) {
-                                const dist = calculateDistance(lastCoords.lat, lastCoords.lng, latitude, longitude);
-                                totalDistance += dist;
-                                updateDistanceUI();
-                            }
-                            lastCoords = { lat: latitude, lng: longitude };
-                        },
-                        error => {
-                            alert('GPS 권한이 거부되었거나 위치를 가져올 수 없어 가상 모드로 전환을 추천합니다.');
-                            toggleRealGPS();
-                        },
-                        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-                    );
-                } else {
-                    alert('이 브라우저는 GPS를 지원하지 않습니다.');
-                }
-            } else {
-                isRealGPSActive = false;
-                navigator.geolocation.clearWatch(watchId);
-                lastCoords = null;
-                statusElem.innerText = '일시 정지됨';
-                statusElem.className = 'text-xs px-2 py-0.5 rounded-full bg-slate-200 text-slate-600';
-                btnElem.classList.replace('bg-red-500', 'bg-indigo-600');
-                btnElem.innerHTML = `<i class="fa-solid fa-location-crosshairs"></i> 실제 GPS 측정`;
-            }
-        }
-
-        // 2. 가상 루트 시뮬레이터 (KYRO 거리/영역 모델링)
-        function toggleVirtualGPS() {
-            if (isRealGPSActive) toggleRealGPS(); // 실제 GPS 종료
-
-            const statusElem = document.getElementById('gps-status');
-            const btnElem = document.getElementById('btn-virtual-gps');
-
-            if (!isVirtualGPSActive) {
-                isVirtualGPSActive = true;
-                statusElem.innerText = '가상 루트 실행 중';
-                statusElem.className = 'text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold';
-                btnElem.classList.replace('bg-emerald-500', 'bg-red-500');
-                btnElem.innerHTML = `<i class="fa-solid fa-pause"></i> 시뮬레이션 중지`;
-
-                // 0.5초마다 0.05km씩 가상 이동
-                virtualInterval = setInterval(() => {
-                    totalDistance += 0.05;
-                    updateDistanceUI();
-                    if (totalDistance >= 2.0) {
-                        clearInterval(virtualInterval);
-                        statusElem.innerText = '목표 달성!';
-                    }
-                }, 500);
-            } else {
-                isVirtualGPSActive = false;
-                clearInterval(virtualInterval);
-                statusElem.innerText = '일시 정지됨';
-                statusElem.className = 'text-xs px-2 py-0.5 rounded-full bg-slate-200 text-slate-600';
-                btnElem.classList.replace('bg-red-500', 'bg-emerald-500');
-                btnElem.innerHTML = `<i class="fa-solid fa-gamepad"></i> 가상 루트 실행`;
-            }
-        }
-
-        // 하버스인(Haversine) 공식을 활용한 구면 위도/경도 거리 계산 (km 단위)
-        function calculateDistance(lat1, lon1, lat2, lon2) {
-            const R = 6371; // 지구 반지름 (km)
-            const dLat = (lat2 - lat1) * Math.PI / 180;
-            const dLon = (lon2 - lon1) * Math.PI / 180;
-            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                      Math.sin(dLon / 2) * Math.sin(dLon / 2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-            return R * c;
-        }
-
-        // 거리 및 포인트 계산 UI 갱신
-        function updateDistanceUI() {
-            document.getElementById('distance').innerText = totalDistance.toFixed(2);
-            // 1km당 100포인트 적립 로직
-            const earnedPoints = Math.floor(totalDistance * 100);
-            document.getElementById('calc-points').innerText = earnedPoints;
-
-            // 가상 목표 루트 프로그래스바 갱신 (목표: 2.0km)
-            const progressPercent = Math.min((totalDistance / 2.0) * 100, 100);
-            document.getElementById('route-progress').style.width = `${progressPercent}%`;
-        }
-
-        // 운동 포인트 최종 적립
-        function claimExercisePoints() {
-            const earnedPoints = Math.floor(totalDistance * 100);
-            if (earnedPoints <= 0) {
-                alert('먼저 GPS 측정 또는 가상 루트로 운동 거리를 채워주세요!');
-                return;
-            }
-            userPoints += earnedPoints;
-            alert(`🎉 축하합니다! 운동으로 ${earnedPoints} P가 적립되었습니다!`);
-            totalDistance = 0;
-            updateDistanceUI();
-            updatePointsUI();
-        }
-
-        // AI 퀴즈 풀기 기능
-        function solveQuiz(isCorrect) {
-            if (isCorrect) {
-                userPoints += 50;
-                alert('🎯 정답입니다! AI 맞춤 학습 완료 보상으로 +50 P 가 지급되었습니다.');
-                updatePointsUI();
-            } else {
-                alert('❌ 오답입니다. 다시 도전해보세요!');
-            }
-        }
-
-        // 상점 상품 구매 기능
-        function buyItem(itemName, cost) {
-            if (userPoints >= cost) {
-                userPoints -= cost;
-                updatePointsUI();
-                alert(`🎁 [${itemName}] 교환 완료! 내 쿠폰함으로 발송되었습니다.`);
-            } else {
-                alert('포인트가 부족합니다. 운동이나 학습으로 포인트를 더 모아보세요!');
-            }
-        }
-    </script>
-</body>
-</html>
+                    <div class="grid grid-cols-2 gap-3 mt-3 bg-black/20 p-3 rounded-xl backdrop-blur-sm">
+                        <div class="text-center border-r border-white/10">
+                            <span class="text-[11px] text-blue-200">측정 거리</span>
+                            <div class="text-
