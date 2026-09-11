@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NASA 우주 대시보드 (APOD & 소행성)</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #0b0f19;
+      color: #e2e8f0;
+    }
+    .container { max-width: 1200px; margin: 0 auto; }
+    header { text-align: center; margin-bottom: 25px; }
+    h1 { color: #38bdf8; margin-bottom: 8px; }
+    p.subtitle { color: #94a3b8; font-size: 0.95rem; margin: 0; }
+
+    /* 검색 박스 */
+    .search-box {
+      background-color: #1e293b;
+      padding: 15px 20px;
+      border-radius: 10px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 25px;
+      flex-wrap: wrap;
+    }
+    label { font-weight: bold; color: #cbd5e1; }
+    input[type="date"] {
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: 1px solid #475569;
+      background-color: #0f172a;
+      color: #fff;
+      font-size: 1rem;
+    }
+    button {
+      padding: 9px 20px;
+      background-color: #0284c7;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    button:hover { background-color: #0369a1; }
+
+    /* 대시보드 레이아웃 (2열) */
+    .dashboard {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+      gap: 25px;
+    }
+    @media (max-width: 520px) {
+      .dashboard { grid-template-columns: 1fr; }
+    }
+
+    .section-card {
+      background-color: #1e293b;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+    }
+    .section-card h2 {
+      margin-top: 0;
+      color: #38bdf8;
+      border-bottom: 2px solid #334155;
+      padding-bottom: 10px;
+      font-size: 1.25rem;
+    }
+
+    /* APOD 스타일 */
+    .apod-media {
+      width: 100%;
+      max-height: 380px;
+      object-fit: cover;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      cursor: pointer;
+    }
+    .apod-iframe {
+      width: 100%;
+      height: 280px;
+      border: none;
+      border-radius: 8px;
+      margin-bottom: 15px;
+    }
+    .apod-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 6px; color: #f1f5f9; }
+    .apod-date { font-size: 0.85rem; color: #94a3b8; margin-bottom: 12px; }
+    .apod-explanation {
+      font-size: 0.9rem;
+      line-height: 1.6;
+      color: #cbd5e1;
+      max-height: 220px;
+      overflow-y: auto;
+      padding-right: 5px;
+    }
+
+    /* 소행성 스타일 */
+    .asteroid-list { max-height: 520px; overflow-y: auto; padding-right: 5px; }
+    .asteroid-item {
+      background-color: #0f172a;
+      padding: 14px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      border-left: 4px solid #38bdf8;
+    }
+    .asteroid-item.hazard { border-left-color: #ef4444; }
+    .asteroid-item h4 { margin: 0 0 8px 0; font-size: 0.98rem; color: #f8fafc; }
+    .badge-hazard {
+      background-color: #ef4444;
+      color: white;
+      font-size: 0.75rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-left: 6px;
+    }
+    .asteroid-details { font-size: 0.85rem; color: #94a3b8; line-height: 1.6; }
+    .asteroid-details strong { color: #cbd5e1; }
+    .jpl-link { color: #38bdf8; text-decoration: none; font-size: 0.85rem; display: inline-block; margin-top: 6px; }
+    .jpl-link:hover { text-decoration: underline; }
+
+    .loading, .error { padding: 30px; text-align: center; color: #94a3b8; }
+    .error { color: #f87171; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🌌 NASA 우주 대시보드</h1>
+      <p class="subtitle">선택한 날짜의 천체 사진(APOD) 및 접근 소행성(NeoWs) 정보</p>
+    </header>
+
+    <div class="search-box">
+      <label for="search-date">조회 날짜:</label>
+      <input type="date" id="search-date">
+      <button onclick="fetchAllData()">통합 조회</button>
+    </div>
+
+    <div class="dashboard">
+      <!-- 1. APOD 섹션 -->
+      <div class="section-card">
+        <h2>📷 오늘의 천체 사진 (APOD)</h2>
+        <div id="apod-content" class="loading">데이터를 불러오는 중입니다...</div>
+      </div>
+
+      <!-- 2. 소행성 섹션 -->
+      <div class="section-card">
+        <h2>☄️ 근접 소행성 정보 (NeoWs)</h2>
+        <div id="asteroid-content" class="loading">데이터를 불러오는 중입니다...</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_KEY = 'dgilVYms8V6DRsPZrxa0yZzQghwibLwbaAJGubsa';
+
+    // 페이지 진입 시 오늘 날짜로 자동 조회
+    window.onload = () => {
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('search-date').value = today;
+      fetchAllData();
+    };
+
+    function fetchAllData() {
+      const date = document.getElementById('search-date').value;
+      if (!date) {
+        alert('날짜를 선택해 주세요.');
+        return;
+      }
+      fetchAPOD(date);
+      fetchAsteroids(date);
+    }
+
+    // [1] APOD 가져오기
+    async function fetchAPOD(date) {
+      const apodDiv = document.getElementById('apod-content');
+      apodDiv.className = 'loading';
+      apodDiv.innerHTML = '천체 사진을 가져오는 중...';
+
+      const url = `https://api.nasa.gov/planetary/apod?api_key=${API_KEY}&date=${date}`;
+
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('사진 데이터를 불러올 수 없습니다.');
+        const data = await res.json();
+
+        let mediaHtml = '';
+        if (data.media_type === 'image') {
+          mediaHtml = `<img src="${data.url}" alt="${data.title}" class="apod-media" title="클릭시 원본 보기" onclick="window.open('${data.hdurl || data.url}', '_blank')">`;
+        } else if (data.media_type === 'video') {
+          mediaHtml = `<iframe src="${data.url}" class="apod-iframe" allowfullscreen></iframe>`;
+        }
+
+        apodDiv.className = '';
+        apodDiv.innerHTML = `
+          ${mediaHtml}
+          <div class="apod-title">${data.title}</div>
+          <div class="apod-date">${data.date} ${data.copyright ? `| © ${data.copyright}` : ''}</div>
+          <div class="apod-explanation">${data.explanation}</div>
+        `;
+      } catch (err) {
+        apodDiv.className = 'error';
+        apodDiv.innerHTML = `APOD 조회 실패: ${err.message}`;
+      }
+    }
+
+    // [2] 소행성 정보 가져오기
+    async function fetchAsteroids(date) {
+      const asteroidDiv = document.getElementById('asteroid-content');
+      asteroidDiv.className = 'loading';
+      asteroidDiv.innerHTML = '소행성 목록을 가져오는 중...';
+
+      const url = `https://api.nasa.gov/neo/rest/v1/feed?start_date=${date}&end_date=${date}&api_key=${API_KEY}`;
+
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('소행성 데이터를 불러올 수 없습니다.');
+        const data = await res.json();
+        const asteroids = data.near_earth_objects[date];
+
+        if (!asteroids || asteroids.length === 0) {
+          asteroidDiv.className = '';
+          asteroidDiv.innerHTML = '<p>해당 날짜에 접근하는 소행성 정보가 없습니다.</p>';
+          return;
+        }
+
+        let html = `<p style="margin-top:0; color:#94a3b8;">감지된 소행성: <strong>${asteroids.length}개</strong></p>`;
+        html += '<div class="asteroid-list">';
+
+        asteroids.forEach(ast => {
+          const isHazard = ast.is_potentially_hazardous_asteroid;
+          const maxDiameter = ast.estimated_diameter.meters.estimated_diameter_max.toFixed(1);
+          const minDiameter = ast.estimated_diameter.meters.estimated_diameter_min.toFixed(1);
+          const approachData = ast.close_approach_data[0];
+          const velocity = Math.round(approachData.relative_velocity.kilometers_per_hour).toLocaleString();
+          const missDistance = Math.round(approachData.miss_distance.kilometers).toLocaleString();
+
+          html += `
+            <div class="asteroid-item ${isHazard ? 'hazard' : ''}">
+              <h4>
+                ${ast.name}
+                ${isHazard ? '<span class="badge-hazard">⚠️ 잠재적 위험</span>' : ''}
+              </h4>
+              <div class="asteroid-details">
+                <div>• <strong>지름 추정치:</strong> ${minDiameter}m ~ ${maxDiameter}m</div>
+                <div>• <strong>상대 속도:</strong> 시속 ${velocity} km</div>
+                <div>• <strong>지구 근접 거리:</strong> ${missDistance} km</div>
+              </div>
+              <a href="${ast.nasa_jpl_url}" target="_blank" class="jpl-link">JPL 연구소 상세 정보 ↗</a>
+            </div>
+          `;
+        });
+
+        html += '</div>';
+
+        asteroidDiv.className = '';
+        asteroidDiv.innerHTML = html;
+      } catch (err) {
+        asteroidDiv.className = 'error';
+        asteroidDiv.innerHTML = `소행성 조회 실패: ${err.message}`;
+      }
+    }
+  </script>
+</body>
+</html>
