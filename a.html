@@ -2,129 +2,238 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>걸음 수 측정</title>
-
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>스마트 만보기</title>
   <style>
+    * { box-sizing: border-box; font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, Arial, sans-serif; }
     body {
-      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #0f172a;
+      color: #f8fafc;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    .card {
+      background: #1e293b;
+      width: 90%;
+      max-width: 400px;
+      padding: 30px 20px;
+      border-radius: 24px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
       text-align: center;
-      padding-top: 80px;
-      background: #f5f5f5;
+    }
+    h1 { font-size: 1.2rem; color: #94a3b8; margin-top: 0; font-weight: 500; }
+    
+    .status-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 0.85rem;
+      background: #334155;
+      color: #cbd5e1;
+      margin-bottom: 20px;
+    }
+    .status-badge.active { background: #0284c7; color: #fff; }
+
+    .step-container {
+      margin: 20px 0;
+    }
+    .step-count {
+      font-size: 4.5rem;
+      font-weight: 800;
+      color: #38bdf8;
+      line-height: 1;
+    }
+    .step-label {
+      font-size: 1.1rem;
+      color: #cbd5e1;
+      margin-top: 8px;
     }
 
-    #steps {
-      font-size: 70px;
-      font-weight: bold;
-      margin: 30px;
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+      margin: 30px 0 20px 0;
+      padding-top: 20px;
+      border-top: 1px solid #334155;
     }
+    .stat-box p { margin: 0; font-size: 0.85rem; color: #94a3b8; }
+    .stat-box h2 { margin: 5px 0 0 0; font-size: 1.4rem; color: #f1f5f9; }
 
+    .btn-group {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+    }
     button {
-      padding: 15px 30px;
-      font-size: 18px;
+      flex: 1;
+      padding: 14px 0;
+      font-size: 1rem;
+      font-weight: bold;
       border: none;
-      border-radius: 10px;
+      border-radius: 12px;
       cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-primary { background: #0284c7; color: white; }
+    .btn-primary:active { background: #0369a1; }
+    .btn-secondary { background: #334155; color: #cbd5e1; }
+    .btn-secondary:active { background: #475569; }
+
+    .notice {
+      margin-top: 20px;
+      font-size: 0.75rem;
+      color: #64748b;
+      line-height: 1.4;
     }
   </style>
 </head>
-
 <body>
 
-  <h1>오늘의 걸음 수</h1>
+  <div class="card">
+    <h1>오늘의 걸음 수</h1>
+    <div id="status" class="status-badge">측정 중지됨</div>
 
-  <div id="steps">0</div>
+    <div class="step-container">
+      <div id="steps" class="step-count">0</div>
+      <div class="step-label">걸음</div>
+    </div>
 
-  <p>걸음</p>
+    <div class="stats-grid">
+      <div class="stat-box">
+        <p>이동 거리</p>
+        <h2 id="distance">0.00 km</h2>
+      </div>
+      <div class="stat-box">
+        <p>소모 칼로리</p>
+        <h2 id="calories">0 kcal</h2>
+      </div>
+    </div>
 
-  <button onclick="startStepCounter()">걸음 측정 시작</button>
+    <div class="btn-group">
+      <button id="toggleBtn" class="btn-primary" onclick="toggleCounter()">측정 시작</button>
+      <button class="btn-secondary" onclick="resetCounter()">초기화</button>
+    </div>
+
+    <!-- PC/노트북 테스트용 클릭 버튼 -->
+    <div class="notice">
+      * 스마트폰(모바일)에서 접속 후 흔들면 걸음이 측정됩니다.<br>
+      <span onclick="addStepManual()" style="text-decoration: underline; cursor: pointer; color: #475569;">[PC 테스트용: 여기를 눌러 +1걸음]</span>
+    </div>
+  </div>
 
   <script>
     let steps = 0;
-
-    // 이전 가속도 값
-    let previousAcceleration = 0;
-
-    // 마지막 걸음으로부터 지난 시간
+    let isTracking = false;
     let lastStepTime = 0;
+    let isPeak = false;
 
-    function startStepCounter() {
+    // 감지 민감도 설정 (지구 중력가속도 9.8m/s² 기준 피크값)
+    const STEP_THRESHOLD = 11.5; 
+    const MIN_STEP_INTERVAL = 350; // 걸음 간 최소 시간 간격 (ms)
 
-      // iPhone에서는 센서 권한을 요청해야 하는 경우가 있음
-      if (
-        typeof DeviceMotionEvent !== "undefined" &&
-        typeof DeviceMotionEvent.requestPermission === "function"
-      ) {
+    function toggleCounter() {
+      if (isTracking) {
+        stopCounter();
+      } else {
+        startCounter();
+      }
+    }
+
+    function startCounter() {
+      // iOS 센서 권한 요청 핸들링
+      if (typeof DeviceMotionEvent !== "undefined" && typeof DeviceMotionEvent.requestPermission === "function") {
         DeviceMotionEvent.requestPermission()
           .then(permissionState => {
-
             if (permissionState === "granted") {
-              window.addEventListener(
-                "devicemotion",
-                detectStep
-              );
+              attachMotionListener();
             } else {
-              alert("센서 사용 권한이 필요합니다.");
+              alert("모션 센서 권한이 거부되었습니다.");
             }
-
           })
           .catch(console.error);
-
+      } else if (window.DeviceMotionEvent) {
+        // 안드로이드 등 일반 모바일 브라우저
+        attachMotionListener();
       } else {
-
-        // Android 등
-        window.addEventListener(
-          "devicemotion",
-          detectStep
-        );
-
+        alert("이 기기/브라우저는 가속도 센서를 지원하지 않습니다.");
+        return;
       }
 
-      alert("걸음 측정을 시작합니다!");
+      isTracking = true;
+      document.getElementById("toggleBtn").textContent = "일시 정지";
+      document.getElementById("toggleBtn").className = "btn-secondary";
+      document.getElementById("status").textContent = "측정 중...";
+      document.getElementById("status").className = "status-badge active";
     }
 
+    function stopCounter() {
+      window.removeEventListener("devicemotion", detectStep);
+      isTracking = false;
+      document.getElementById("toggleBtn").textContent = "측정 시작";
+      document.getElementById("toggleBtn").className = "btn-primary";
+      document.getElementById("status").textContent = "측정 중지됨";
+      document.getElementById("status").className = "status-badge";
+    }
+
+    function attachMotionListener() {
+      window.addEventListener("devicemotion", detectStep, true);
+    }
 
     function detectStep(event) {
+      if (!isTracking) return;
 
-      const acceleration = event.accelerationIncludingGravity;
+      const acc = event.accelerationIncludingGravity;
+      if (!acc) return;
 
-      if (!acceleration) return;
+      const x = acc.x || 0;
+      const y = acc.y || 0;
+      const z = acc.z || 0;
 
-      const x = acceleration.x || 0;
-      const y = acceleration.y || 0;
-      const z = acceleration.z || 0;
-
-      // 전체 가속도 계산
-      const magnitude =
-        Math.sqrt(x * x + y * y + z * z);
-
-      // 현재 가속도와 이전 가속도의 차이
-      const difference =
-        Math.abs(magnitude - previousAcceleration);
-
+      // 전체 가속도 크기 계산
+      const magnitude = Math.sqrt(x * x + y * y + z * z);
       const currentTime = Date.now();
 
-      /*
-        일정 수준 이상의 움직임이 발생하고
-        너무 짧은 시간에 연속으로 감지되지 않으면
-        한 걸음으로 판단
-      */
-      if (
-        difference > 1.2 &&
-        currentTime - lastStepTime > 300
-      ) {
-
+      // 걸음 감지 알고리즘 (임계값 돌파 후 하강할 때 1걸음 인정)
+      if (magnitude > STEP_THRESHOLD && !isPeak && (currentTime - lastStepTime > MIN_STEP_INTERVAL)) {
+        isPeak = true;
+      } else if (magnitude < STEP_THRESHOLD && isPeak) {
+        isPeak = false;
         steps++;
-
-        document.getElementById("steps").textContent = steps;
-
         lastStepTime = currentTime;
+        updateUI();
       }
-
-      previousAcceleration = magnitude;
     }
 
-  </script>
+    function updateUI() {
+      document.getElementById("steps").textContent = steps.toLocaleString();
+      
+      // 약 보폭 0.7m 기준 예상 거리 계산 (km)
+      const km = (steps * 0.0007).toFixed(2);
+      document.getElementById("distance").textContent = `${km} km`;
 
+      // 약 1걸음당 0.04 kcal 계산
+      const kcal = Math.round(steps * 0.04);
+      document.getElementById("calories").textContent = `${kcal} kcal`;
+    }
+
+    function resetCounter() {
+      if (confirm("걸음 수를 초기화하시겠습니까?")) {
+        steps = 0;
+        updateUI();
+      }
+    }
+
+    // PC 테스트용 클릭 함수
+    function addStepManual() {
+      steps++;
+      updateUI();
+    }
+  </script>
 </body>
 </html>
